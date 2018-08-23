@@ -1,0 +1,1 @@
+from .pgsqldoc import Preprocessor

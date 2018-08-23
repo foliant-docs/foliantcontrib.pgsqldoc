@@ -19,13 +19,15 @@ setup(
     version='1.0.0',
     author='Daniil Minukhin',
     author_email='ddddsa@gmail.com',
-    packages=['foliant.preprocessors'],
+    packages=['foliant.preprocessors.pgsqldoc'],
+    package_data={'foliant.preprocessors.pgsqldoc': ['templates/*.j2']},
     license='MIT',
     platforms='any',
     install_requires=[
         'foliant>=1.0.5',
         'foliantcontrib.plantuml',
-        'psycopg2'
+        'psycopg2',
+        'jinja2'
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",

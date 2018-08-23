@@ -5,8 +5,12 @@ Generates documentation from PostgreSQL database structure,
 
 
 import re
+import os
 import traceback
 import psycopg2
+from shutil import copyfile
+from jinja2 import Environment, FileSystemLoader
+from pkg_resources import resource_string, resource_filename
 from foliant.preprocessors.base import BasePreprocessor
 
 
@@ -21,11 +25,12 @@ class Preprocessor(BasePreprocessor):
         'user': 'postgres',
         'password': '',
         'schemas': [],
+        'doc_template': 'pgsqldoc.j2',
+        'scheme_template': 'scheme.j2'
     }
 
     # info about tables
     SQL_TABLES = '''SELECT
-      st.relid,
       st.schemaname,
       st.relname,
       pd.description
@@ -78,7 +83,7 @@ class Preprocessor(BasePreprocessor):
         specific_name,
         data_type,
         routine_definition,
-        routine_body,
+        -- routine_body,
         external_language
     FROM information_schema.routines
     WHERE data_type != 'trigger'"""
@@ -112,6 +117,7 @@ class Preprocessor(BasePreprocessor):
         self._user = self.options['user']
         self._password = self.options['password']
         self._schemas = self.options['schemas']
+        self._env = Environment(loader=FileSystemLoader(str(self.project_path)))
 
     def _get_rows(self, sql: str) -> list:
         """Run query from sql param and return a list of dicts key=column name,
@@ -208,9 +214,10 @@ class Preprocessor(BasePreprocessor):
 
         return result + '    @enduml\n</plantuml>'
 
-    def _gen_docs(self,
-                  schemas: list,
-                  draw: bool) -> str:
+    def _collect_datasets(self,
+                          schemas: list,
+                          draw: bool) -> dict:
+        result = {}
         sql = self.SQL_TABLES
         if schemas:
             sql += '\nWHERE schemaname IN (%s);' % ','.join(schemas)
@@ -222,6 +229,22 @@ class Preprocessor(BasePreprocessor):
         self.logger.debug(f'SQL_COLUMNS: \n{sql}')
         columns = self._get_rows(sql)
         fks = self._get_rows(self.SQL_FKS)
+
+        # fill each table with columns and foreign keys
+        for table in tables:
+            columns_fltr = list(filter(lambda x:
+                                       x['table_name'] == table['relname'],
+                                       columns))
+            for col in columns_fltr:
+                fks_fltr = list(filter(lambda x:
+                                       x['table_name'] == table['relname'] and
+                                       x['column_name'] == col['column_name'],
+                                       fks))
+                col['foreign_keys'] = fks_fltr
+            table['columns'] = columns_fltr
+
+        result['tables'] = tables
+
         sql = self.SQL_FUNCTIONS
         if schemas:
             sql += '\nAND routine_schema IN (%s);' % ','.join(schemas)
@@ -232,19 +255,67 @@ class Preprocessor(BasePreprocessor):
             sql += '\nWHERE specific_schema IN (%s);' % ','.join(schemas)
         self.logger.debug(f'SQL_PARAMETERS: \n{sql}')
         parameters = self._get_rows(sql)
+
+        # fill each function with its parameters
+        for func in functions:
+            params_fltr = list(filter(lambda x: x['specific_name'] ==
+                                      func['specific_name'],
+                                      parameters))
+            func['parameters'] = params_fltr
+
+        result['functions'] = functions
+
         sql = self.SQL_TRIGGERS
         if schemas:
             sql += '\nAND routine_schema IN (%s);' % ','.join(schemas)
         self.logger.debug(f'SQL_TRIGGERS: \n{sql}')
         triggers = self._get_rows(sql)
-        docs = self._to_md(tables,
-                           columns,
-                           fks,
-                           functions,
-                           triggers,
-                           parameters)
+        result['triggers'] = triggers
+        return result
+
+    def _to_md2(self,
+                data: dict,
+                doc_template: str) -> str:
+        try:
+            template = self._env.get_template(doc_template)
+            result = template.render(tables=data['tables'],
+                                     functions=data['functions'],
+                                     triggers=data['triggers'])
+        except Exception as e:
+            info = traceback.format_exc()
+            self.logger.debug(f'Failed to render doc template:\n\n{info}')
+            return ''
+        return result
+
+    def _to_diag(self,
+                 data: dict,
+                 scheme_template: str) -> str:
+        try:
+            template = self._env.get_template(scheme_template)
+            result = template.render(tables=data['tables'])
+        except Exception as e:
+            info = traceback.format_exc()
+            self.logger.debug(f'Failed to render scheme template:\n\n{info}')
+            return ''
+        return result
+
+    def _gen_docs(self,
+                  schemas: list,
+                  draw: bool,
+                  doc_template: str,
+                  scheme_template: str) -> str:
+        data = self._collect_datasets(schemas, draw)
+        docs = self._to_md2(data, doc_template)
         if draw:
-            docs += '\n\n' + self._to_uml(tables, columns, fks)
+            docs += '\n\n' + self._to_diag(data, scheme_template)
+        # docs = self._to_md(tables,
+        #                    columns,
+        #                    fks,
+        #                    functions,
+        #                    triggers,
+        #                    parameters)
+        # if draw:
+        #     docs += '\n\n' + self._to_uml(tables, columns, fks)
         return docs
 
     def process_pgsqldoc_blocks(self, content: str) -> str:
@@ -281,7 +352,20 @@ class Preprocessor(BasePreprocessor):
             # add quotes to use in a query
             schemas = [f"'{i}'" for i in schemas]
             draw = tag_options.get('draw', self.options['draw'])
-            return self._gen_docs(schemas, draw)
+
+            doc_template = tag_options.get('doc_template',
+                                           self.options['doc_template'])
+            scheme_template = tag_options.get('scheme_template',
+                                              self.options['scheme_template'])
+            if doc_template == self.defaults['doc_template'] and\
+                    not os.path.exists(self.project_path / doc_template):
+                copyfile(resource_filename(__name__, 'templates/pgsqldoc.j2'),
+                         self.project_path / doc_template)
+            if scheme_template == self.defaults['scheme_template'] and\
+                    not os.path.exists(self.project_path / scheme_template):
+                copyfile(resource_filename(__name__, 'templates/scheme.j2'),
+                         self.project_path / scheme_template)
+            return self._gen_docs(schemas, draw, doc_template, scheme_template)
         return self.pattern.sub(_sub, content)
 
     def apply(self):
