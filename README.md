@@ -14,14 +14,14 @@ To enable the preprocessor, add `pgsqldoc` to `preprocessors` section in the pro
 
 ```yaml
 preprocessors:
-    - pgsql
+    - pgsqldoc
 ```
 
 The preprocessor has a number of options:
 
 ```yaml
 preprocessors:
-    - pgsql:
+    - pgsqldoc:
         host: localhost
         port: 5432
         dbname: postgres
@@ -99,15 +99,15 @@ This way you can have documentation for several different databases in one folia
 
 ## About Templates
 
-The structure of generated documentation is defined by jinja-templates. You can choose what elements will appear in the documentation, change their positions, add constant text, change layouts and more. Check the [jinja documentation](http://jinja.pocoo.org/docs/2.10/templates/) for infor on all cool things you can do with templates.
+The structure of generated documentation is defined by jinja-templates. You can choose what elements will appear in the documentation, change their positions, add constant text, change layouts and more. Check the [Jinja documentation](http://jinja.pocoo.org/docs/2.10/templates/) for info on all cool things you can do with templates.
 
 If you don't specify path to templates in the config-file and tag-options pgsqldoc will use default paths:
 
-- `<Project_path>/pgsqldoc.j2` for documentations template;
-- `<Project_path>/scheme.j2` for database scheme template.
+- `<Project_path>/pgsqldoc.j2` for documentation template;
+- `<Project_path>/scheme.j2` for database scheme source template.
 
 If pgsqldoc can't find these templates in the project dir it will generate default templates and put them there.
 
-So if you accidentally mess things up while experimenting with templates you can always delete your templates and run preprocessor — the default ones will be put into the project dir. (But only if the templates are not specified in config-file or their names are the same as defaults).
+So if you accidentally mess things up while experimenting with templates you can always delete your templates and run preprocessor — the default ones will appear in the project dir. (But only if the templates are not specified in config-file or their names are the same as defaults).
 
 One more useful thing about default templates is that you can find a detailed description of the source data they get from pgsqldoc in the beginning of the template.
