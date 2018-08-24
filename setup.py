@@ -16,7 +16,7 @@ setup(
     description=SHORT_DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    version='1.0.0',
+    version='1.1.0',
     author='Daniil Minukhin',
     author_email='ddddsa@gmail.com',
     packages=['foliant.preprocessors.pgsqldoc'],
@@ -26,7 +26,7 @@ setup(
     install_requires=[
         'foliant>=1.0.5',
         'foliantcontrib.plantuml',
-        'psycopg2',
+        'psycopg2-binary',
         'jinja2'
     ],
     classifiers=[

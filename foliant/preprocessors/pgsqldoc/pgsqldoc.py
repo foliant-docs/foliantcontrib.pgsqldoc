@@ -111,13 +111,8 @@ class Preprocessor(BasePreprocessor):
 
         self.logger.debug(f'Preprocessor inited: {self.__dict__}')
 
-        self._host = self.options['host']
-        self._port = self.options['port']
-        self._dbname = self.options['dbname']
-        self._user = self.options['user']
-        self._password = self.options['password']
-        self._schemas = self.options['schemas']
-        self._env = Environment(loader=FileSystemLoader(str(self.project_path)))
+        self._env = \
+            Environment(loader=FileSystemLoader(str(self.project_path)))
 
     def _get_rows(self, sql: str) -> list:
         """Run query from sql param and return a list of dicts key=column name,
@@ -132,87 +127,6 @@ class Preprocessor(BasePreprocessor):
                 row_dict[keys[i]] = row[i] or ''
             result.append(row_dict)
         return result
-
-    def _to_md(self,
-               tables: list,
-               columns: list,
-               fks: list,
-               functions: list,
-               triggers: list,
-               parameters: list) -> str:
-        result = ''
-        if tables:
-            result += '# Tables\n\n'
-        for table in tables:
-            name = table['relname']
-            descr = table['description']
-            result += f'## {name}\n\n{descr}\n\n'
-            result += 'column | nullable | type | descr | fkey\n' +\
-                      '------ | -------- | ---- | ----- | ----\n'
-            fks_filtered = list(filter(lambda x: x['table_name'] ==
-                                       table['relname'], fks))
-            for col in columns:
-                if col['table_name'] == table['relname']:
-                    fkey = ''
-                    for key in fks_filtered:
-                        if key['column_name'] == col['column_name']:
-                            fkey = key['foreign_table_name'] + \
-                                '[' + key['foreign_column_name'] + ']'
-                    result += col['column_name'] + ' | ' +\
-                        col['is_nullable'] + ' | ' +\
-                        col['data_type'] + ' | ' +\
-                        col['description'] + ' | ' + fkey + '\n'
-            result += '\n'
-
-        if functions:
-            result += '# Functions\n\n'
-        for func in functions:
-            name = func['routine_name']
-            language = func['external_language']
-            data_type = func['data_type']
-            body = '    ' + func['routine_definition'].replace('\n', '\n    ')
-            result += f'## {name}\n\n**Language**: {language}\n\n' +\
-                      f'**Data Type**: {data_type}\n\n'
-            params = list(filter(lambda x: x['specific_name'] ==
-                                 func['specific_name'], parameters))
-            if params:
-                result += '**Parameters**:\n\n' +\
-                          'name | type | mode | default\n' +\
-                          '---- | ---- | ---- | -------\n'
-                for param in params:
-                    result += param['parameter_name'] + ' | ' +\
-                        param['data_type'] + ' | ' +\
-                        param['parameter_mode'] + ' | ' +\
-                        param['parameter_default'] + '\n'
-            result += f'\n{body}\n\n'
-        result += '\n'
-        if triggers:
-            result += '# Triggers\n\n'
-        for trigger in triggers:
-            name = trigger['routine_name']
-            body = '    ' + trigger['routine_definition'].replace('\n',
-                                                                  '\n    ')
-            result += f'## {name}\n\n{body}\n\n'
-
-        return result
-
-    def _to_uml(self, tables, columns, fks):
-        result = '# Database Scheme\n\n<plantuml>\n    @startuml\n'
-        for table in tables:
-            name = table['relname']
-            result += f'    object {name} {{\n'
-            for col in columns:
-                if col['table_name'] == table['relname']:
-                    result += '    ' + col['column_name'] +\
-                              ' [' + col['data_type'] + ']\n'
-            result += '    }\n'
-
-        for key in fks:
-            result += '    ' + key['table_name'] + ' --|> ' +\
-                      key['foreign_table_name'] + ' : ' + key['column_name'] +\
-                      '\n'
-
-        return result + '    @enduml\n</plantuml>'
 
     def _collect_datasets(self,
                           schemas: list,
@@ -273,15 +187,16 @@ class Preprocessor(BasePreprocessor):
         result['triggers'] = triggers
         return result
 
-    def _to_md2(self,
-                data: dict,
-                doc_template: str) -> str:
+    def _to_md(self,
+               data: dict,
+               doc_template: str) -> str:
         try:
             template = self._env.get_template(doc_template)
             result = template.render(tables=data['tables'],
                                      functions=data['functions'],
                                      triggers=data['triggers'])
         except Exception as e:
+            print(f'\nFailed to render doc template {doc_template}:', e)
             info = traceback.format_exc()
             self.logger.debug(f'Failed to render doc template:\n\n{info}')
             return ''
@@ -304,18 +219,13 @@ class Preprocessor(BasePreprocessor):
                   draw: bool,
                   doc_template: str,
                   scheme_template: str) -> str:
-        data = self._collect_datasets(schemas, draw)
-        docs = self._to_md2(data, doc_template)
+        # add quotes to use in a query
+        schemas_cl = [f"'{i}'" for i in schemas]
+
+        data = self._collect_datasets(schemas_cl, draw)
+        docs = self._to_md(data, doc_template)
         if draw:
             docs += '\n\n' + self._to_diag(data, scheme_template)
-        # docs = self._to_md(tables,
-        #                    columns,
-        #                    fks,
-        #                    functions,
-        #                    triggers,
-        #                    parameters)
-        # if draw:
-        #     docs += '\n\n' + self._to_uml(tables, columns, fks)
         return docs
 
     def process_pgsqldoc_blocks(self, content: str) -> str:
@@ -324,11 +234,11 @@ class Preprocessor(BasePreprocessor):
                 tag_options = self.get_options(block.group('options'))
             else:
                 tag_options = {}
-            host = tag_options.get('host', self._host)
-            port = tag_options.get('port', self._port)
-            dbname = tag_options.get('dbname', self._dbname)
-            user = tag_options.get('user', self._user)
-            password = tag_options.get('password', self._password)
+            host = tag_options.get('host', self.options['host'])
+            port = tag_options.get('port', self.options['port'])
+            dbname = tag_options.get('dbname', self.options['dbname'])
+            user = tag_options.get('user', self.options['user'])
+            password = tag_options.get('password', self.options['password'])
             self._con = None
             try:
                 self.logger.debug(f'Trying to connect: host={host} port={port}'
@@ -341,6 +251,8 @@ class Preprocessor(BasePreprocessor):
                                              f"password='{password}'")
             except psycopg2.OperationalError as e:
                 info = traceback.format_exc()
+                print(f'\nFailed to connect to host {host}. '
+                      'Documentation was not generated')
                 self.logger.debug(f'Failed to connect: host={host} port={port}'
                                   f' dbname={dbname}, user={user} '
                                   f'password={password}.\n\n{info}')
@@ -348,9 +260,7 @@ class Preprocessor(BasePreprocessor):
             if 'schemas' in tag_options:
                 schemas = re.split(',\s*', tag_options['schemas'])
             else:
-                schemas = self._schemas
-            # add quotes to use in a query
-            schemas = [f"'{i}'" for i in schemas]
+                schemas = self.options['schemas']
             draw = tag_options.get('draw', self.options['draw'])
 
             doc_template = tag_options.get('doc_template',

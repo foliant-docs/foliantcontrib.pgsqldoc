@@ -1,7 +1,6 @@
-# PostgreSQL Automatic Documentation Preprocessor for Foliant
+# PostgreSQL Docs Generator for Foliant
 
-This preprocessor generates simple documentation of PostgreSQL databases based on the structure and the comments. It uses [PlantUML](http://plantuml.com/) to draw the database scheme.
-
+This preprocessor generates simple documentation of a PostgreSQL database based on its structure. It uses [Jinja2](http://jinja.pocoo.org/) templating engine for customizing the layout and [PlantUML](http://plantuml.com/) for drawing the database scheme.
 
 ## Installation
 
@@ -23,19 +22,18 @@ The preprocessor has a number of options:
 ```yaml
 preprocessors:
     - pgsql:
-        draw: false
         host: localhost
         port: 5432
         dbname: postgres
         user: postgres
         password: ''
+        draw: false
         schemas:
             - 'public'
             - ...
+        doc_template: pgsqldoc.j2
+        scheme_template: scheme.j2
 ```
-
-`draw`
-:   If this parameter is `true` — preprocessor would generate the scheme of the database and add it to the end of the document. Default: `false`
 
 `host`
 :   PostgreSQL database host address. Default: `localhost`
@@ -52,8 +50,17 @@ preprocessors:
 `passwrod`
 :   PostgreSQL user password.
 
+`draw`
+:   If this parameter is `true` — preprocessor would generate scheme of the database and add it to the end of the document. Default: `false`
+
 `schemas`
-:   List of PostgreSQL database schema names to include in the documentation.
+:   List of PostgreSQL database schema names to include in the documentation. Only tables from these schemas will be included. If the parameter is not specified — tables from all schemas will be included.
+
+`doc_template`
+:   Path to jinja-template for documentation. Path is relative to the project directory. Default: `pgsqldoc.j2`
+
+`scheme_template`
+:   Path to jinja-template for scheme. Path is relative to the project directory. Default: `scheme.j2`
 
 ## Usage
 
@@ -67,9 +74,9 @@ This document contains the most awesome automatically generated documentation of
 <<pgsqldoc></pgsqldoc>
 ```
 
-Each time the preprocessor encounters the tag `<<pgsqldoc></pgsqldoc>` it inserts the whole generated document instead of it. The connection parameters are taken from config.
+Each time the preprocessor encounters the tag `<<pgsqldoc></pgsqldoc>` it inserts the whole generated documentation text instead of it. The connection parameters are taken from the config-file.
 
-You can also specify each parameter in the tag options:
+You can also specify some parameters (or all of them) in the tag options:
 
 ```markdown
 # Introduction
@@ -80,7 +87,7 @@ Introduction text for database documentation.
           host="11.51.126.8"
           port="5432"
           dbname="mydb"
-          user="john"
+          user="scott"
           password="tiger"
           schemas="public, corp">
 </pgsqldoc>
@@ -90,14 +97,17 @@ Tag parameters have the highest priority.
 
 This way you can have documentation for several different databases in one foliant project (even in one md-file if you like it so).
 
-## Generated Document Structure
+## About Templates
 
-Generated documentation consists of four sections:
+The structure of generated documentation is defined by jinja-templates. You can choose what elements will appear in the documentation, change their positions, add constant text, change layouts and more. Check the [jinja documentation](http://jinja.pocoo.org/docs/2.10/templates/) for infor on all cool things you can do with templates.
 
-**Tables** — all tables from the database and their columns. Comments act as description and are added for both tables and columns.
+If you don't specify path to templates in the config-file and tag-options pgsqldoc will use default paths:
 
-**Functions** — all stored functions from the database, their source code and information about parameters. Functions description is currently not supported.
+- `<Project_path>/pgsqldoc.j2` for documentations template;
+- `<Project_path>/scheme.j2` for database scheme template.
 
-**Triggers** — all triggers and their source code.
+If pgsqldoc can't find these templates in the project dir it will generate default templates and put them there.
 
-**Database Scheme** — scheme of the database drawn by PlantUML.
+So if you accidentally mess things up while experimenting with templates you can always delete your templates and run preprocessor — the default ones will be put into the project dir. (But only if the templates are not specified in config-file or their names are the same as defaults).
+
+One more useful thing about default templates is that you can find a detailed description of the source data they get from pgsqldoc in the beginning of the template.
