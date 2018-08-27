@@ -35,12 +35,12 @@ tables (list) - list of dictionaries with info about tables;
 {% endfor %}{# {% for column in table['columns'] %} #}
 }{% endfor %}{# {% for table in tables %} #}
 
-{% for table in tables %}
+{% for table in tables -%}
 {% for column in table['columns'] -%}
 {% for fk in column['foreign_keys'] %}
 {{ fk['table_name']|indent }} --> {{ fk['foreign_table_name'] }} : {{ fk['column_name'] }}
-{% endfor %}{# {% for fk in colulmn['foreign_keys'] %} #}
-{% endfor %}{# {% for column in table['columns'] %} #}
-{% endfor %}{# {% for table in tables %} #}
+{%- endfor -%}{# {% for fk in colulmn['foreign_keys'] %} #}
+{%- endfor -%}{# {% for column in table['columns'] %} #}
+{%- endfor -%}{# {% for table in tables %} #}
     @enduml
 </plantuml>

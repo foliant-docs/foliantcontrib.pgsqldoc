@@ -10,8 +10,10 @@ import traceback
 import psycopg2
 from shutil import copyfile
 from jinja2 import Environment, FileSystemLoader
-from pkg_resources import resource_string, resource_filename
+from pkg_resources import resource_filename
 from foliant.preprocessors.base import BasePreprocessor
+from .queries import (TablesQuery, ColumnsQuery, ForeignKeysQuery,
+                      FunctionsQuery, ParametersQuery, TriggersQuery)
 
 
 class Preprocessor(BasePreprocessor):
@@ -28,81 +30,6 @@ class Preprocessor(BasePreprocessor):
         'doc_template': 'pgsqldoc.j2',
         'scheme_template': 'scheme.j2'
     }
-
-    # info about tables
-    SQL_TABLES = '''SELECT
-      st.schemaname,
-      st.relname,
-      pd.description
-    FROM pg_catalog.pg_statio_all_tables AS st
-    LEFT JOIN pg_catalog.pg_description pd
-           ON st.relid = pd.objoid
-          AND pd.objsubid = 0'''
-
-    # info about columns of all tables
-    SQL_COLUMNS = '''SELECT
-      c.table_name,
-      c.ordinal_position,
-      c.column_name,
-      c.is_nullable,
-      c.data_type,
-      c.column_default,
-      c.character_maximum_length,
-      c.numeric_precision,
-      pd.description
-    FROM information_schema.columns c
-    JOIN pg_catalog.pg_statio_all_tables st
-      ON st.schemaname = c.table_schema
-     AND st.relname = c.table_name
-    LEFT JOIN pg_catalog.pg_description pd
-           ON pd.objoid = st.relid
-          AND pd.objsubid = c.ordinal_position'''
-
-    # all foreign keys
-    SQL_FKS = '''SELECT
-        tc.table_schema,
-        tc.constraint_name,
-        tc.table_name,
-        kcu.column_name,
-        ccu.table_schema AS foreign_table_schema,
-        ccu.table_name AS foreign_table_name,
-        ccu.column_name AS foreign_column_name
-    FROM
-        information_schema.table_constraints AS tc
-        JOIN information_schema.key_column_usage AS kcu
-          ON tc.constraint_name = kcu.constraint_name
-          AND tc.table_schema = kcu.table_schema
-        JOIN information_schema.constraint_column_usage AS ccu
-          ON ccu.constraint_name = tc.constraint_name
-          AND ccu.table_schema = tc.table_schema
-    WHERE constraint_type = 'FOREIGN KEY';'''
-
-    # all stored functions
-    SQL_FUNCTIONS = """SELECT
-        routine_name,
-        specific_name,
-        data_type,
-        routine_definition,
-        -- routine_body,
-        external_language
-    FROM information_schema.routines
-    WHERE data_type != 'trigger'"""
-
-    # all functions parameters
-    SQL_PARAMETERS = """SELECT
-        specific_name,
-        parameter_name,
-        parameter_mode,
-        data_type,
-        parameter_default
-    FROM information_schema.parameters
-    """
-
-    SQL_TRIGGERS = """SELECT
-        routine_name,
-        routine_definition
-    FROM information_schema.routines
-    WHERE data_type = 'trigger'"""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -131,18 +58,15 @@ class Preprocessor(BasePreprocessor):
     def _collect_datasets(self,
                           schemas: list,
                           draw: bool) -> dict:
+        filters = {}
+        if schemas:
+            filters['schema'] = schemas
+
         result = {}
-        sql = self.SQL_TABLES
-        if schemas:
-            sql += '\nWHERE schemaname IN (%s);' % ','.join(schemas)
-        self.logger.debug(f'SQL_TABLES: \n{sql}')
-        tables = self._get_rows(sql)
-        sql = self.SQL_COLUMNS
-        if schemas:
-            sql += '\nWHERE st.schemaname IN (%s);' % ','.join(schemas)
-        self.logger.debug(f'SQL_COLUMNS: \n{sql}')
-        columns = self._get_rows(sql)
-        fks = self._get_rows(self.SQL_FKS)
+
+        tables = TablesQuery(self._con, filters).run()
+        columns = ColumnsQuery(self._con, filters).run()
+        fks = ForeignKeysQuery(self._con, filters).run()
 
         # fill each table with columns and foreign keys
         for table in tables:
@@ -159,16 +83,8 @@ class Preprocessor(BasePreprocessor):
 
         result['tables'] = tables
 
-        sql = self.SQL_FUNCTIONS
-        if schemas:
-            sql += '\nAND routine_schema IN (%s);' % ','.join(schemas)
-        self.logger.debug(f'SQL_FUNCTIONS: \n{sql}')
-        functions = self._get_rows(sql)
-        sql = self.SQL_PARAMETERS
-        if schemas:
-            sql += '\nWHERE specific_schema IN (%s);' % ','.join(schemas)
-        self.logger.debug(f'SQL_PARAMETERS: \n{sql}')
-        parameters = self._get_rows(sql)
+        functions = FunctionsQuery(self._con, filters).run()
+        parameters = ParametersQuery(self._con, filters).run()
 
         # fill each function with its parameters
         for func in functions:
@@ -179,11 +95,7 @@ class Preprocessor(BasePreprocessor):
 
         result['functions'] = functions
 
-        sql = self.SQL_TRIGGERS
-        if schemas:
-            sql += '\nAND routine_schema IN (%s);' % ','.join(schemas)
-        self.logger.debug(f'SQL_TRIGGERS: \n{sql}')
-        triggers = self._get_rows(sql)
+        triggers = TriggersQuery(self._con, filters).run()
         result['triggers'] = triggers
         return result
 
@@ -219,10 +131,7 @@ class Preprocessor(BasePreprocessor):
                   draw: bool,
                   doc_template: str,
                   scheme_template: str) -> str:
-        # add quotes to use in a query
-        schemas_cl = [f"'{i}'" for i in schemas]
-
-        data = self._collect_datasets(schemas_cl, draw)
+        data = self._collect_datasets(schemas, draw)
         docs = self._to_md(data, doc_template)
         if draw:
             docs += '\n\n' + self._to_diag(data, scheme_template)
