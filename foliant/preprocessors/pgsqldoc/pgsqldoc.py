@@ -41,20 +41,6 @@ class Preprocessor(BasePreprocessor):
         self._env = \
             Environment(loader=FileSystemLoader(str(self.project_path)))
 
-    def _get_rows(self, sql: str) -> list:
-        """Run query from sql param and return a list of dicts key=column name,
-        value = field value"""
-        cur = self._con.cursor()
-        cur.execute(sql)
-        result = []
-        keys = tuple((d[0] for d in cur.description))
-        for row in cur.fetchall():
-            row_dict = {}
-            for i in range(len(keys)):
-                row_dict[keys[i]] = row[i] or ''
-            result.append(row_dict)
-        return result
-
     def _collect_datasets(self,
                           schemas: list,
                           draw: bool) -> dict:
