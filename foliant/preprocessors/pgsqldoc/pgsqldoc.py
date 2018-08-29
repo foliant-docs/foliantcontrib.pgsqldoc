@@ -8,12 +8,14 @@ import re
 import os
 import traceback
 import psycopg2
+import yaml
 from shutil import copyfile
 from jinja2 import Environment, FileSystemLoader
 from pkg_resources import resource_filename
 from foliant.preprocessors.base import BasePreprocessor
 from .queries import (TablesQuery, ColumnsQuery, ForeignKeysQuery,
-                      FunctionsQuery, ParametersQuery, TriggersQuery)
+                      FunctionsQuery, ParametersQuery, TriggersQuery,
+                      SCHEMA, TABLE_NAME)
 
 
 class Preprocessor(BasePreprocessor):
@@ -26,7 +28,8 @@ class Preprocessor(BasePreprocessor):
         'dbname': 'postgres',
         'user': 'postgres',
         'password': '',
-        'schemas': [],
+        'filters': {},
+        'filter_tables': '',
         'doc_template': 'pgsqldoc.j2',
         'scheme_template': 'scheme.j2'
     }
@@ -42,11 +45,8 @@ class Preprocessor(BasePreprocessor):
             Environment(loader=FileSystemLoader(str(self.project_path)))
 
     def _collect_datasets(self,
-                          schemas: list,
+                          filters: dict,
                           draw: bool) -> dict:
-        filters = {}
-        if schemas:
-            filters['schema'] = schemas
 
         result = {}
 
@@ -113,11 +113,11 @@ class Preprocessor(BasePreprocessor):
         return result
 
     def _gen_docs(self,
-                  schemas: list,
+                  filters: dict,
                   draw: bool,
                   doc_template: str,
                   scheme_template: str) -> str:
-        data = self._collect_datasets(schemas, draw)
+        data = self._collect_datasets(filters, draw)
         docs = self._to_md(data, doc_template)
         if draw:
             docs += '\n\n' + self._to_diag(data, scheme_template)
@@ -152,10 +152,11 @@ class Preprocessor(BasePreprocessor):
                                   f' dbname={dbname}, user={user} '
                                   f'password={password}.\n\n{info}')
                 return ''
-            if 'schemas' in tag_options:
-                schemas = re.split(',\s*', tag_options['schemas'])
+            if 'filters' in tag_options:
+                filters = yaml.load(tag_options['filters'])
             else:
-                schemas = self.options['schemas']
+                filters = self.options['filters']
+
             draw = tag_options.get('draw', self.options['draw'])
 
             doc_template = tag_options.get('doc_template',
@@ -170,7 +171,7 @@ class Preprocessor(BasePreprocessor):
                     not os.path.exists(self.project_path / scheme_template):
                 copyfile(resource_filename(__name__, 'templates/scheme.j2'),
                          self.project_path / scheme_template)
-            return self._gen_docs(schemas, draw, doc_template, scheme_template)
+            return self._gen_docs(filters, draw, doc_template, scheme_template)
         return self.pattern.sub(_sub, content)
 
     def apply(self):
