@@ -28,9 +28,8 @@ preprocessors:
         user: postgres
         password: ''
         draw: false
-        schemas:
-            - 'public'
-            - ...
+        filters:
+            ...
         doc_template: pgsqldoc.j2
         scheme_template: scheme.j2
 ```
@@ -53,8 +52,8 @@ preprocessors:
 `draw`
 :   If this parameter is `true` — preprocessor would generate scheme of the database and add it to the end of the document. Default: `false`
 
-`schemas`
-:   List of PostgreSQL database schema names to include in the documentation. Only tables from these schemas will be included. If the parameter is not specified — tables from all schemas will be included.
+`filters`
+:   SQL-like operators for filtering the results. More info in the **Filters** section.
 
 `doc_template`
 :   Path to jinja-template for documentation. Path is relative to the project directory. Default: `pgsqldoc.j2`
@@ -88,14 +87,78 @@ Introduction text for database documentation.
           port="5432"
           dbname="mydb"
           user="scott"
-          password="tiger"
-          schemas="public, corp">
+          password="tiger">
 </pgsqldoc>
 ```
 
 Tag parameters have the highest priority.
 
 This way you can have documentation for several different databases in one foliant project (even in one md-file if you like it so).
+
+## Filters
+
+You can add filters to exclude some tables from the documentation. Pgsqldocs supports several SQL-like filtering operators and a determined list of filtering fields.
+
+You can switch on filters either in foliant.yml file like this:
+
+```yaml
+preprocessors:
+  - pgsqldoc:
+    filters:
+      eq:
+        schema: public
+      regex:
+        table_name: 'main_.+'
+```
+
+or in tag options using the same yaml-syntax:
+
+```markdown
+
+<pgsqldoc filters="
+eq:
+    schema: public
+  regex:
+    table_name: 'main_.+'">
+</pgsqldoc>
+
+```
+
+List of currently supported operators:
+
+operator | SQL equivalent | description | value
+-------- | -------------- | ----------- | -----
+`eq` | `=` | equals | literal
+`not_eq` | `!=` | does not equal | literal
+`in` | `IN` | contains | list
+`not_in` | `NOT IN` | does not contain | list
+`regex` | `~` | matches regular expression | literal
+`not_regex` | `!~` | does not match regular expression | literal
+
+List of currently supported filtering fields:
+
+field | description
+----- | -----------
+schema | filter by PostgreSQL database schema
+table_name | filter by database table names
+
+The syntax for using filters in configuration files is following:
+
+```yaml
+filters:
+  <operator>:
+    <field>: value
+```
+
+If `value` should be list like for `in` operator, use YAML-lists instead:
+
+```yaml
+filters:
+  in:
+    schema:
+      - public
+      - corp
+```
 
 ## About Templates
 

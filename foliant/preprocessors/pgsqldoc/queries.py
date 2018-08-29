@@ -1,6 +1,9 @@
 import psycopg2
 from abc import ABCMeta
 
+SCHEMA = 'schema'
+TABLE_NAME = 'table_name'
+
 
 class QueryBase(metaclass=ABCMeta):
 
@@ -13,19 +16,67 @@ class QueryBase(metaclass=ABCMeta):
                  con: psycopg2.extensions.connection,
                  filters: dict = {}):
         self._con = con
-        self._filters = self._get_filters(filters)
+        self._filters = self._resolve_filters(filters)
 
-    def _get_filters(self, filters: dict):
+    def _resolve_filters(self, filters: dict) -> str:
+        resolvers = {'in': self._in,
+                     'not_in': self._not_in,
+                     'eq': self._eq,
+                     'not_eq': self._not_eq,
+                     'regex': self._regex,
+                     'not_regex': self._not_regex}
+
+        result = ''
+        for key in filters:
+            if key not in resolvers:
+                continue
+            result += self._get_predicate(filters[key], resolvers[key])
+        return result
+
+    def _get_predicate(self, filters: dict, func) -> str:
         filter_str = ''
         for filter_ in filters:
             if filter_ not in self._filter_fields:
                 continue
-            if type(filters[filter_][0]) == str:
-                values = [f"'{f}'" for f in filters[filter_]]
-            values = ', '.join(values)
             field = self._filter_fields[filter_]
-            filter_str += f'AND {field} in ({values})\n'
+            filter_str += f'AND {field} ' + func(filters[filter_]) + '\n'
         return filter_str
+
+    def _in(self, value: list) -> str:
+        """filters = [('field_name', ['values',]), ...]"""
+
+        in_str = ''
+        values = value
+        if type(values[0]) == str:
+            values = [f"'{v}'" for v in value]
+        in_str = ', '.join(values)
+        return f'IN ({in_str})'
+
+    def _not_in(self, value: list) -> str:
+        """filters = [('field_name', ['values',]), ...]"""
+
+        in_str = ''
+        values = value
+        if type(values[0]) == str:
+            values = [f"'{v}'" for v in value]
+        in_str = ', '.join(values)
+        return f'NOT IN ({in_str})'
+
+    def _regex(self, value: str) -> str:
+        return f"~ '{value}'"
+
+    def _not_regex(self, value: str) -> str:
+        return f"!~ '{value}'"
+
+    def _eq(self, value) -> str:
+        if type(value) == str:
+            value = f"'{value}'"
+        return f"= {value}"
+
+    def _not_eq(self, value: str) -> str:
+        if type(value) == str:
+            value = f"'{value}'"
+        return f"!= {value}"
 
     def _get_rows(self, sql) -> list:
         """Run query from sql param and return a list of dicts key=column name,
@@ -57,9 +108,11 @@ class TablesQuery(QueryBase):
            ON st.relid = pd.objoid
           AND pd.objsubid = 0
     WHERE 1 = 1
-    {filters}'''
+    {filters}
+    ORDER BY st.relname'''
 
-    _filter_fields = {'schema': 'schemaname'}
+    _filter_fields = {SCHEMA: 'schemaname',
+                      TABLE_NAME: 'st.relname'}
 
 
 class ColumnsQuery(QueryBase):
@@ -82,9 +135,11 @@ class ColumnsQuery(QueryBase):
            ON pd.objoid = st.relid
           AND pd.objsubid = c.ordinal_position
     WHERE 1=1
-    {filters}'''
+    {filters}
+    ORDER BY c.table_name, c.ordinal_position'''
 
-    _filter_fields = {'schema': 'c.table_schema'}
+    _filter_fields = {SCHEMA: 'c.table_schema',
+                      TABLE_NAME: 'c.table_name'}
 
 
 class ForeignKeysQuery(QueryBase):
@@ -120,9 +175,10 @@ class FunctionsQuery(QueryBase):
         external_language
     FROM information_schema.routines
     WHERE data_type != 'trigger'
-    {filters}"""
+    {filters}
+    ORDER BY routine_name"""
 
-    _filter_fields = {'schema': 'routine_schema'}
+    _filter_fields = {SCHEMA: 'routine_schema'}
 
 
 class ParametersQuery(QueryBase):
@@ -137,7 +193,7 @@ class ParametersQuery(QueryBase):
     WHERE 1=1
     {filters}"""
 
-    _filter_fields = {'schema': 'specific_schema'}
+    _filter_fields = {SCHEMA: 'specific_schema'}
 
 
 class TriggersQuery(QueryBase):
@@ -147,6 +203,7 @@ class TriggersQuery(QueryBase):
         routine_definition
     FROM information_schema.routines
     WHERE data_type = 'trigger'
-    {filters}"""
+    {filters}
+    ORDER BY routine_name"""
 
-    _filter_fields = {'schema': 'routine_schema'}
+    _filter_fields = {SCHEMA: 'routine_schema'}
