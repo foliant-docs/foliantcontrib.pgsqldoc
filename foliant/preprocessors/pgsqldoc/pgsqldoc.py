@@ -29,7 +29,6 @@ class Preprocessor(BasePreprocessor):
         'user': 'postgres',
         'password': '',
         'filters': {},
-        'filter_tables': '',
         'doc_template': 'pgsqldoc.j2',
         'scheme_template': 'scheme.j2'
     }
