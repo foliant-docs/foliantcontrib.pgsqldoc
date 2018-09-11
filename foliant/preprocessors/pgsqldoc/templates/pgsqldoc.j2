@@ -47,6 +47,8 @@ triggers (list) - list of dictionaries with info about triggers;
 {% for table in tables %}
 ## {{ table['relname'] }}
 
+{{ table['description'] }}
+
 column | nullable | type | descr | fkey
 ------ | -------- | ---- | ----- | ----
 {% for col in table['columns'] -%}
