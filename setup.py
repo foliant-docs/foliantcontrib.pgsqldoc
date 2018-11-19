@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 SHORT_DESCRIPTION = 'Documentation generator for PostgreSQL DB'
@@ -16,10 +16,12 @@ setup(
     description=SHORT_DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    version='1.1.2',
+    version='1.1.3',
     author='Daniil Minukhin',
     author_email='ddddsa@gmail.com',
-    packages=['foliant.preprocessors.pgsqldoc'],
+    package_dir={'': 'foliant/preprocessors'},
+    packages=find_packages(where='foliant/preprocessors',
+                           exclude=['*.test']),
     package_data={'foliant.preprocessors.pgsqldoc': ['templates/*.j2']},
     license='MIT',
     platforms='any',

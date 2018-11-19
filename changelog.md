@@ -1,3 +1,8 @@
+# 1.1.3
+
+-    Add tests
+-    Refactor code
+
 # 1.1.2
 
 -    Queries are now ordered (not adjustable right now)
