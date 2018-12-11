@@ -167,14 +167,18 @@ class ForeignKeysQuery(QueryBase):
 class FunctionsQuery(QueryBase):
 
     base_query = """SELECT
-        routine_name,
-        specific_name,
-        data_type,
-        routine_definition,
-        -- routine_body,
-        external_language
-    FROM information_schema.routines
-    WHERE data_type != 'trigger'
+        r.routine_name,
+        r.specific_name,
+        r.data_type,
+        r.routine_definition,
+        r.external_language,
+        pd.description
+    FROM information_schema.routines r
+    JOIN pg_catalog.pg_namespace n ON r.routine_schema = n.nspname
+    JOIN pg_catalog.pg_proc pgp on pgp.pronamespace = n.oid and pgp.proname = r.routine_name
+    LEFT JOIN pg_catalog.pg_description pd
+        on pd.objoid = pgp.oid
+    WHERE 1=1
     {filters}
     ORDER BY routine_name"""
 
@@ -199,11 +203,16 @@ class ParametersQuery(QueryBase):
 class TriggersQuery(QueryBase):
 
     base_query = """SELECT
-        routine_name,
-        routine_definition
-    FROM information_schema.routines
-    WHERE data_type = 'trigger'
+       event_object_table,
+       trigger_name,
+       event_manipulation,
+       trigger_schema,
+       action_timing,
+       action_orientation,
+       action_statement
+    FROM information_schema.triggers
+    WHERE 1=1
     {filters}
-    ORDER BY routine_name"""
+    ORDER BY event_object_table, trigger_name"""
 
-    _filter_fields = {SCHEMA: 'routine_schema'}
+    _filter_fields = {SCHEMA: 'trigger_schema'}

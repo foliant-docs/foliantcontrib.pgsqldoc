@@ -31,6 +31,7 @@ functions (list) - list of dictionaries with info about stored functions;
     'data_type' (string) - data type of the function returning value;
     'routine_definition' (string) - function body;
     'external_language' (string) - the language function is written on.
+    'description' (string) - function comment (description).
     'parameters' (list) - list of dictionaries with info about parameters of
                           this function;
         'specific_name' (string) - unique name of this specific function;
@@ -40,8 +41,15 @@ functions (list) - list of dictionaries with info about stored functions;
         'parameter_default' (string) - default value of the parameter or ''.
 
 triggers (list) - list of dictionaries with info about triggers;
-    'routine_name' (string) - name of the trigger;
-    'routine_definition' (string) - trigger body#}
+    'event_object_table' (string) — table on which the trigger is set;
+    'trigger_name' (string) — name of the trigger;
+    'event_manipulation' (string) — which event is triggered (INSERT, UPDATE, etc);
+    'trigger_schema' (string) — schema of the trigger;
+    'action_timing' (string) — timing of the trigger (BEFORE, AFTER);
+    'action_orientation' (string) — action orientation;
+    'action_statement' (string) — source code of the trigger;
+#}
+
 # Tables
 
 {% for table in tables %}
@@ -64,6 +72,8 @@ column | nullable | type | descr | fkey
 {% for func in functions %}
 ## {{ func['routine_name'] }}
 
+{{ func['description'] }}
+
 **Language**: {{ func['external_language'] }}
 
 **Data Type**: {{ func['data_type'] }}
@@ -85,8 +95,15 @@ name | type | mode | default
 # Triggers
 
 {% for trig in triggers %}
-## {{ trig['routine_name'] }}
+## {{ trig['event_object_table'] }} {{ trig['action_timing'] }} {{ trig['event_manipulation'] }}
 
-{{trig['routine_definition']|indent}}
+**Name**: {{ trig['trigger_name']|indent }}
+
+**Table**: {{ trig['event_object_table'] }}
+
+**Event**: {{ trig['action_timing'] }} {{ trig['event_manipulation'] }}
+
+{{ trig['action_statement']|indent }}
+
 {% endfor %}{# {% for trig in triggers %} #}
 {% endif %}{# {% if triggers %} #}

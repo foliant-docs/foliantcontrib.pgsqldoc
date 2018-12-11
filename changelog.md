@@ -1,7 +1,8 @@
 # 1.1.3
 
--    Add tests
--    Refactor code
+-    Add tests; refactor code
+-    Fix triggers and functions; add description to functions
+-    Fix template
 
 # 1.1.2
 
