@@ -11,7 +11,8 @@ from foliant.preprocessors.base import BasePreprocessor
 from .queries import (TablesQuery, ColumnsQuery, ForeignKeysQuery,
                       FunctionsQuery, ParametersQuery, TriggersQuery)
 from .utils import copy_if_not_exists
-from .combined_options import CombinedOptions, yaml_to_dict_conversion
+from foliant.preprocessors.utils.combined_options import (CombinedOptions,
+                                                          yaml_to_dict_convertor)
 from foliant.utils import output
 from copy import deepcopy
 
@@ -196,9 +197,10 @@ class Preprocessor(BasePreprocessor):
     def process_pgsqldoc_blocks(self, content: str) -> str:
         def _sub(block) -> str:
             tag_options = self.get_options(block.group('options'))
-            options = CombinedOptions(self.options,
-                                      tag_options,
-                                      conversions={'filters': yaml_to_dict_conversion},
+            options = CombinedOptions({'config': self.options,
+                                       'tag': tag_options},
+                                      priority='tag',
+                                      convertors={'filters': yaml_to_dict_convertor},
                                       defaults=self.defaults)
             self._connect(options)
             if not self._con:

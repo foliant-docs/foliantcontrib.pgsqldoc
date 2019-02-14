@@ -16,7 +16,7 @@ setup(
     description=SHORT_DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    version='1.1.3',
+    version='1.1.4',
     author='Daniil Minukhin',
     author_email='ddddsa@gmail.com',
     # package_dir={'': 'foliant/preprocessors/'},
@@ -26,6 +26,7 @@ setup(
     platforms='any',
     install_requires=[
         'foliant>=1.0.5',
+        'foliantcontrib.utils.combinedoptions',
         'foliantcontrib.plantuml',
         'psycopg2-binary',
         'jinja2',

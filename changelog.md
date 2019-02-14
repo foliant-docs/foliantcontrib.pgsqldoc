@@ -1,3 +1,6 @@
+# 1.1.4
+-    Move combined_options into another module
+
 # 1.1.3
 
 -    Add tests; refactor code
