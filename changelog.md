@@ -1,4 +1,4 @@
-# 1.1.4
+# 1.1.5
 -    Move combined_options into another module
 
 # 1.1.3
