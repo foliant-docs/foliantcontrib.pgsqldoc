@@ -1,3 +1,5 @@
+![](https://img.shields.io/pypi/v/foliantcontrib.pgsqldoc.svg)
+
 # PostgreSQL Docs Generator for Foliant
 
 This preprocessor generates simple documentation of a PostgreSQL database based on its structure. It uses [Jinja2](http://jinja.pocoo.org/) templating engine for customizing the layout and [PlantUML](http://plantuml.com/) for drawing the database scheme.
