@@ -1,3 +1,7 @@
+# 1.1.6
+
+-    Preprocessor is now deprecated. Please, use DBDoc instead: https://github.com/foliant-docs/foliantcontrib.dbdoc
+
 # 1.1.5
 -    Move combined_options into another module
 
