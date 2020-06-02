@@ -1,6 +1,8 @@
-![](https://img.shields.io/pypi/v/foliantcontrib.pgsqldoc.svg)
+[![](https://img.shields.io/pypi/v/foliantcontrib.pgsqldoc.svg)](https://pypi.org/project/foliantcontrib.pgsqldoc/)  [![](https://img.shields.io/github/v/tag/foliant-docs/foliantcontrib.pgsqldoc.svg?label=GitHub)](https://github.com/foliant-docs/foliantcontrib.pgsqldoc)
 
 # PostgreSQL Docs Generator for Foliant
+
+**This preprocessor is DEPRECATED. Please, use [DBDoc](https://github.com/foliant-docs/foliantcontrib.dbdoc) instead.**
 
 This preprocessor generates simple documentation of a PostgreSQL database based on its structure. It uses [Jinja2](http://jinja.pocoo.org/) templating engine for customizing the layout and [PlantUML](http://plantuml.com/) for drawing the database scheme.
 
