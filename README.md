@@ -67,17 +67,17 @@ preprocessors:
 
 ## Usage
 
-Add a `<<pgsqldoc></pgsqldoc>` tag at the position in the document where the generated documentation of a PostgreSQL database should be inserted:
+Add a `<pgsqldoc></pgsqldoc>` tag at the position in the document where the generated documentation of a PostgreSQL database should be inserted:
 
 ```markdown
 # Introduction
 
 This document contains the most awesome automatically generated documentation of our marvellous database.
 
-<<pgsqldoc></pgsqldoc>
+<pgsqldoc></pgsqldoc>
 ```
 
-Each time the preprocessor encounters the tag `<<pgsqldoc></pgsqldoc>` it inserts the whole generated documentation text instead of it. The connection parameters are taken from the config-file.
+Each time the preprocessor encounters the tag `<pgsqldoc></pgsqldoc>` it inserts the whole generated documentation text instead of it. The connection parameters are taken from the config-file.
 
 You can also specify some parameters (or all of them) in the tag options:
 
