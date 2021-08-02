@@ -3,18 +3,24 @@ Preprocessor for Foliant documentation authoring tool.
 Generates documentation from PostgreSQL database structure,
 '''
 
-import traceback
 import psycopg2
-from jinja2 import Environment, FileSystemLoader
-from pkg_resources import resource_filename
-from foliant.preprocessors.base import BasePreprocessor
-from .queries import (TablesQuery, ColumnsQuery, ForeignKeysQuery,
-                      FunctionsQuery, ParametersQuery, TriggersQuery)
+import traceback
+
+from .queries import ColumnsQuery
+from .queries import ForeignKeysQuery
+from .queries import FunctionsQuery
+from .queries import ParametersQuery
+from .queries import TablesQuery
+from .queries import TriggersQuery
 from .utils import copy_if_not_exists
-from foliant.preprocessors.utils.combined_options import (CombinedOptions,
-                                                          yaml_to_dict_convertor)
-from foliant.utils import output
 from copy import deepcopy
+from foliant.contrib.combined_options import CombinedOptions
+from foliant.contrib.combined_options import yaml_to_dict_convertor
+from foliant.preprocessors.base import BasePreprocessor
+from foliant.utils import output
+from jinja2 import Environment
+from jinja2 import FileSystemLoader
+from pkg_resources import resource_filename
 
 
 def collect_datasets(connection,

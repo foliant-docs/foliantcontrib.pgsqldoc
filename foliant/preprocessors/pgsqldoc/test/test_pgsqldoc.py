@@ -3,7 +3,7 @@ from unittest import TestCase
 from unittest.mock import Mock, patch, call, DEFAULT
 from pathlib import Path
 from pgsqldoc.pgsqldoc import Preprocessor
-from foliant.preprocessors.utils.combined_options import CombinedOptions
+from foliant.contrib.combined_options import CombinedOptions
 
 
 class TestPreprocessorDB(TestCase):
